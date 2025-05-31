@@ -6,6 +6,49 @@ const axios = require('axios');
 const APP_CLIENT_ID = process.env.REACT_APP_CLIENT_ID;
 const APP_CLIENT_SECRET = process.env.REACT_APP_CLIENT_SECRET;
 
+const facebookAuthStore = {
+    status: null,
+    isvalid: null,
+    message: null,
+    timestamp: null,
+    tokens: {
+        userId: null,
+        accessToken: null,
+        expiresIn: null,
+    }
+}
+
+const updateAuthStatus = (status, isvalid, message, userId, accessToken, expiresIn) => {
+    facebookAuthStore.status = status;
+    facebookAuthStore.isvalid = isvalid;
+    facebookAuthStore.message = message;
+    facebookAuthStore.timestamp = new Date().toISOString();
+    facebookAuthStore.tokens.userId = userId;
+    facebookAuthStore.tokens.accessToken = accessToken;
+    facebookAuthStore.tokens.expiresIn = expiresIn;
+}
+
+const disconnectFacebook = async (req, res) => {
+    updateAuthStatus('disconnected', false, 'Disconnected from Facebook', null, null, null);
+    
+    res.status(200).json({
+        status: 'success',
+        message: 'Disconnected from Facebook'
+    });
+}
+
+const checkFacebookAuthStatus = (req, res) => {
+    console.log('Checking Facebook auth status');
+    res.status(200).json({
+        status: facebookAuthStore.status,
+        isvalid: facebookAuthStore.isvalid,
+        message: facebookAuthStore.message,
+        timestamp: facebookAuthStore.timestamp,
+        userId: facebookAuthStore.tokens.userId,
+        expiresIn: facebookAuthStore.tokens.expiresIn,
+    });
+}
+
 const health = (req, res) => {
     console.log('Controller function called');
     res.status(200).json({
@@ -50,9 +93,20 @@ const facebookAuthCallback = async (req, res) => {
                 message: 'Invalid token'
             });
         }
+        // Update the auth status
+        await updateAuthStatus('connected', true, 'Facebook authentication successful', data.userID, data.accessToken, data.expiresIn);
+
         res.status(200).json({
             status: 'success',
-            message: 'Facebook authentication successful!'
+            message: 'Facebook authentication successful!',
+            data: {
+                status: facebookAuthStore.status,
+                isvalid: facebookAuthStore.isvalid,
+                message: facebookAuthStore.message,
+                timestamp: facebookAuthStore.timestamp,
+                userId: facebookAuthStore.tokens.userId,
+                expiresIn: facebookAuthStore.tokens.expiresIn,
+            }
         });
     } catch (error) {
         console.error('Error in Facebook auth callback:', error);
@@ -67,5 +121,7 @@ const facebookAuthCallback = async (req, res) => {
 // Export the router
 module.exports = {
     health,
-    facebookAuthCallback
+    facebookAuthCallback,
+    disconnectFacebook,
+    checkFacebookAuthStatus
 };
