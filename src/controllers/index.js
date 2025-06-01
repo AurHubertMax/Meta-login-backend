@@ -37,18 +37,6 @@ const disconnectFacebook = async (req, res) => {
     });
 }
 
-const checkFacebookAuthStatus = (req, res) => {
-    console.log('Checking Facebook auth status');
-    res.status(200).json({
-        status: facebookAuthStore.status,
-        isvalid: facebookAuthStore.isvalid,
-        message: facebookAuthStore.message,
-        timestamp: facebookAuthStore.timestamp,
-        userId: facebookAuthStore.tokens.userId,
-        expiresIn: facebookAuthStore.tokens.expiresIn,
-    });
-}
-
 const health = (req, res) => {
     console.log('Controller function called');
     res.status(200).json({
@@ -123,5 +111,4 @@ module.exports = {
     health,
     facebookAuthCallback,
     disconnectFacebook,
-    checkFacebookAuthStatus
 };
