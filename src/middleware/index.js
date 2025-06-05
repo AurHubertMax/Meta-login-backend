@@ -14,6 +14,11 @@ const formatDate = (date) => {
     });
 }
 
+const logWithPadding = (label, value) => {
+    const paddedLabel = (label + ':').padEnd(20, ' ');
+    console.log(`${paddedLabel}${value}`);
+};
+
 const loggerStart = (req, res, next) => {
     const timestamp = new Date();
     const formattedDate = formatDate(timestamp);
@@ -24,8 +29,6 @@ const loggerStart = (req, res, next) => {
 const responseLogger = (req, res, next) => {
     const oldSend = res.send;
     res.send = function (data) {
-        
-        // Format JSON data for better readability
         let responseData;
         try {
             if (typeof data === 'string' && data.trim().startsWith('{')) {
@@ -40,37 +43,44 @@ const responseLogger = (req, res, next) => {
             responseData = data;
         }
         
-        console.log(`Response: \n${responseData}`);
+        logWithPadding('Response', '\n' + responseData);
         oldSend.apply(res, arguments);
     };
     next();
 };
 
 const cookieLogger = (req, res, next) => {
-    console.log(`Cookies:`, req.cookies);
-    console.log(`Session ID:`, req.sessionID);
-    console.log(`Session:`, req.session);
+    if (req.cookies['connect.sid']) {
+        logWithPadding('Session Cookie', `connect.sid=${req.cookies['connect.sid']}`);
+    } else {
+        logWithPadding('Session Cookie', 'Not found');
+    }
+    logWithPadding('Session ID', req.sessionID);
+    logWithPadding('Session Data', JSON.stringify(req.session.user || {}, null, 2));
     next();
 };
+
 const isAuthenticated = (req, res, next) => {
-    if (req.originalUrl === '/auth/facebook/callback' || 
-        req.originalUrl === '/health' || 
-        req.originalUrl === '/auth/facebook/status'
-    ) {
+    // These paths don't need authentication
+    if (req.originalUrl === '/api/auth/facebook/callback' || 
+        req.originalUrl === '/api/health' || 
+        req.originalUrl === '/api/auth/facebook/status' ||
+        req.originalUrl === '/api/debug-session') {
+        logWithPadding('Auth Check', 'Skipped (public route)');
         return next();
     }
 
     if (req.session && req.session.user && req.session.user.isAuthenticated) {
         if (new Date(req.session.user.tokenExpiresAt) > new Date()) {
-            console.log(`User is authenticated: ${req.session.user.userId}`);
+            logWithPadding('Auth Status', `Authenticated (User: ${req.session.user.userId})`);
             return next();
         }
-        console.log(`Session expired for user: ${req.session.user.userId}`);
+        logWithPadding('Auth Status', `Session expired (User: ${req.session.user.userId})`);
         req.session.destroy((err) => {
             if (err) {
-                console.error('Error destroying session:', err);
+                logWithPadding('Error', `Destroying session: ${err.message}`);
             }
-            console.log('Session expired, user logged out');
+            logWithPadding('Auth Action', 'Session expired, user logged out');
             return res.status(401).json({
                 status: 'error',
                 message: 'Session expired'
@@ -78,16 +88,17 @@ const isAuthenticated = (req, res, next) => {
         });
     } else {
         // For unauthenticated users, send 401 for protected routes
-        console.log('User is not authenticated');
+        logWithPadding('Auth Status', 'Not authenticated');
         return res.status(401).json({
             status: 'error',
             message: 'Authentication required'
         });
     }
-}
+};
 
 const verifyFacebookToken = async (req, res, next) => {
     if (!req.session || !req.session.user) {
+        logWithPadding('Token Check', 'Skipped (no session)');
         return next();
     }
     
@@ -96,26 +107,30 @@ const verifyFacebookToken = async (req, res, next) => {
         req.session.user.isAuthenticated &&
         req.session.user.accessToken
     ) {
+        logWithPadding('Token Check', 'Verifying Facebook token...');
         try {
             const isValid = await authStore.validateTokenHelper({ 
                 accessToken: req.session.user.accessToken 
             });
 
             if (!isValid) {
-                console.log('Facebook token expired, logging out user');
+                logWithPadding('Token Status', 'Expired or invalid');
                 req.session.destroy();
                 return res.status(401).json({
                     status: 'error',
                     message: 'Your Facebook session has expired. Please log in again.'
                 });
             }
+            logWithPadding('Token Status', 'Valid');
         } catch (error) {
-            console.error('Error verifying Facebook token:', error);
+            logWithPadding('Error', `Verifying token: ${error.message}`);
             return res.status(500).json({
                 status: 'error',
                 message: 'Internal server error while verifying Facebook token'
             });
         }
+    } else {
+        logWithPadding('Token Check', 'Skipped (not Facebook auth)');
     }
     
     next();

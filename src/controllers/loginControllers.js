@@ -54,6 +54,7 @@ const facebookAuthCallback = async (req, res) => {
             tokenExpiresAt: expirationTimestamp.toISOString(),
             accessToken: data.accessToken,
         }
+
         req.session.save((err) => {
             if (err) {
                 console.error('Error saving session:', err);
@@ -62,7 +63,6 @@ const facebookAuthCallback = async (req, res) => {
                     message: 'Internal server error while saving session'
                 });
             }
-            console.log('Session saved successfully');
             res.status(200).json({
                 status: 'success',
                 message: 'Facebook authentication successful!',
@@ -96,7 +96,7 @@ const getFacebookAuthStatus = (req, res) => {
                 isvalid: true,
                 userId: req.session.user.userId,
                 provider: req.session.user.provider,
-                tokenExpiresAt: req.session.user.tokenExpiresAt
+                tokenExpiresAt: req.session.user.tokenExpiresAt,
             }
         });
     } else {
@@ -110,6 +110,8 @@ const getFacebookAuthStatus = (req, res) => {
         });
     }
 }
+
+
     
 
 // Export the router

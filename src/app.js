@@ -13,12 +13,13 @@ require('./startup/cors')(app);
 app.use(cookieParser());
 app.use(session({
   secret: process.env.SESSION_SECRET || 'session_secret',
-  resave: false,
+  resave: true,
   saveUninitialized: false,
+  store: new session.MemoryStore(), // Use MemoryStore for development; switch to a persistent store in production
   cookie: {
     secure: process.env.NODE_ENV === 'production', 
     httpOnly: true, 
-    sameSite: 'lax', 
+    sameSite: 'none', 
     maxAge: 24 * 60 * 60 * 1000 // 1 day
   }
 }))
