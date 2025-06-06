@@ -2,22 +2,53 @@ require('dotenv').config();
 const express = require('express');
 const app = express();
 // const bodyParser = require('body-parser');
-const routes = require('./routes/index');
-const { requestLogger, responseLogger } = require('./middleware');
+const loginRoutes = require('./routes/loginRoutes');
+const pageRoutes = require('./routes/pageRoutes');
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const { responseLogger, isAuthenticated, cookieLogger, loggerStart, verifyFacebookToken } = require('./middleware');
 
 require('./startup/cors')(app);
+
+app.use(cookieParser());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'session_secret',
+  resave: true,
+  saveUninitialized: false,
+  store: new session.MemoryStore(), // Use MemoryStore for development; switch to a persistent store in production
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', 
+    httpOnly: true, 
+    sameSite: false, // Adjust based on your needs
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
+  }
+}))
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // routes
-app.use(requestLogger);
+
+// Logging middleware for all requests
+app.use(loggerStart);
+app.use(cookieLogger);
 app.use(responseLogger);
-app.use('/api', routes)
 
+const apiRouter = express.Router();
 
+// Public routes that don't need authentication
+apiRouter.get('/health', (req, res) => {
+    return res.status(200).json({
+        status: 'success',
+        message: 'API is healthy'
+    });
+});
 
+apiRouter.use('/auth', loginRoutes);
 
+apiRouter.use('/pages', verifyFacebookToken, isAuthenticated, pageRoutes);
+
+app.use('/api', apiRouter);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
