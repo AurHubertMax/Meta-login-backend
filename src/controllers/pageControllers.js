@@ -48,18 +48,18 @@ const getPages = async (req, res) => {
     }
 }
 
-const postToPages = async (req, res) => {
-    console.log('Posting to pages...');
+const postLinkToPages = async (req, res) => {
+    console.log('Posting link to pages...');
     try {
-        const { pageId, message, link, imageUrl } = req.body;
+        const pageId = req.params.pageId;
         if (!pageId) {
             return res.status(400).json({
                 status: 'error',
                 message: 'Page ID is required'
             });
         }
-        
 
+        const { message, link, imageUrl } = req.body;
         if (link && imageUrl) {
             return res.status(400).json({
                 status: 'error',
@@ -84,19 +84,125 @@ const postToPages = async (req, res) => {
         }
 
         const pageAccessToken = page.accessToken;
+        if (!pageAccessToken) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'No access token for the specified page'
+            });
+        }
 
-        // implement the logic to post to pages
+        const params = {
+            access_token: pageAccessToken,
+            published: true,
+            message: message,
+            link: link,
+        }
+
+        const response = await axios.post(`https://graph.facebook.com/v23.0/${pageId}/feed`, {
+            ...params 
+        });
+
+        if (response.status !== 200) {
+            return res.status(response.status).json({
+                status: 'error',
+                message: 'Failed to post to page',
+                error: response.data
+            });
+        }
+
+        console.log('Post successful:', response);
+
+        return res.status(200).json({
+            status: 'success',
+            message: 'Post to pages successful',
+        })
+
 
     } catch (error) {
         console.error('Error posting to pages:', error);
+        
         return res.status(500).json({
             status: 'error',
             message: 'Failed to post to pages',
-            error: error.message?.message || error.message
+            error: error.response.data.error.message || 'Unknown error'
+        });
+    }
+}
+
+const postImageToPages = async (req, res) => {
+    console.log('Posting image to pages...');
+    try {
+        const pageId = req.params.pageId;
+        if (!pageId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Page ID is required'
+            });
+        }
+
+        const { message, imageUrl } = req.body;
+        console.log('Received body:', req.body);
+        if (!imageUrl || !message) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Both message and image URL are required'
+            });
+        }
+
+        const page = req.session.user.pages.find(p => p.id === pageId);
+        if (!page) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Page not found or you do not have permission'
+            });
+        }
+
+        const pageAccessToken = page.accessToken;
+        if (!pageAccessToken) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'No access token for the specified page'
+            });
+        }
+
+        const params = {
+            access_token: pageAccessToken,
+            published: true,
+            message: message,
+            url: imageUrl,
+        }
+
+        const response = await axios.post(`https://graph.facebook.com/v23.0/${pageId}/photos`, {
+            ...params 
+        });
+
+        if (response.status !== 200) {
+            return res.status(response.status).json({
+                status: 'error',
+                message: 'Failed to post to page',
+                error: response.data
+            });
+        }
+
+        console.log('Post successful:', response);
+
+        return res.status(200).json({
+            status: 'success',
+            message: 'Post to pages successful',
+        })
+    } catch (error) {
+        console.error('Error posting to pages:', error);
+        
+        return res.status(500).json({
+            status: 'error',
+            message: 'Failed to post to pages',
+            error: error.response.data.error.message || 'Unknown error'
         });
     }
 }
 
 module.exports = {
-    getPages
+    getPages,
+    postLinkToPages,
+    postImageToPages
 }
