@@ -85,6 +85,8 @@ const facebookAuthCallback = async (req, res) => {
             accessToken: data.accessToken,
         }
 
+        console.log('facebook access token:', data.accessToken);
+
         req.session.save((err) => {
             if (err) {
                 console.error('Error saving session:', err);
