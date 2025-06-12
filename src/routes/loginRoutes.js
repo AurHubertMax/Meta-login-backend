@@ -21,4 +21,7 @@ router.post('/facebook/callback', metaController.facebookAuthCallback);
 router.post('/facebook/disconnect', metaController.disconnectFacebook);
 router.get('/facebook/status', metaController.getFacebookAuthStatus);
 
+router.get('/threads/callback', metaController.threadsAuthCallback);
+router.get('/threads/login', metaController.threadsLogin);
+
 module.exports = router;

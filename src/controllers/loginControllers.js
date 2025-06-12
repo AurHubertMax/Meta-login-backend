@@ -143,6 +143,42 @@ const getFacebookAuthStatus = (req, res) => {
     }
 }
 
+const threadsLogin = async (req, res) => {
+    const url = `https://threads.net/oauth/authorize?client_id=${process.env.REACT_APP_THREADS_APP_ID}&client_secret=${process.env.REACT_APP_THREADS_APP_SECRET}&redirect_uri=${process.env.REACT_APP_THREADS_REDIRECT_URI}&scope=${process.env.REACT_APP_THREADS_SCOPE}&response_type=code`; 
+    try {
+        res.status(200).json({
+            status: 'success',
+            message: 'Redirecting to Threads login',
+            data: {
+                url: url
+            }
+        });
+    } catch (error) {
+        console.error('Error in threadsLogin:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Internal server error'
+        });
+    }
+}
+
+const threadsAuthCallback = async (req, res) => {
+    console.log('Threads auth callback called');
+    try {
+        return res.status(200).json({
+            status: 'success',
+            message: 'Threads authentication successful!',
+            data: req.body
+        });
+    } catch (error) {
+        console.error('Error in Threads auth callback:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Internal server error'
+        });
+    }
+}
+
 
     
 
@@ -150,5 +186,7 @@ const getFacebookAuthStatus = (req, res) => {
 module.exports = {
     facebookAuthCallback,
     disconnectFacebook,
-    getFacebookAuthStatus
+    getFacebookAuthStatus,
+    threadsAuthCallback,
+    threadsLogin
 };

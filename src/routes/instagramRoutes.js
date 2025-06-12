@@ -5,5 +5,6 @@ const router = express.Router();
 const instagramController = require('../controllers/instagramControllers');
 
 router.get('/', instagramController.getInstagramAccounts);
+router.post('/post/image/:instagramId', instagramController.postImageToInstagram);
 
 module.exports = router;
