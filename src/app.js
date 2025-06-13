@@ -4,6 +4,7 @@ const app = express();
 // const bodyParser = require('body-parser');
 const loginRoutes = require('./routes/loginRoutes');
 const pageRoutes = require('./routes/pageRoutes');
+const instagramRoutes = require('./routes/instagramRoutes');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const { responseLogger, isAuthenticated, cookieLogger, loggerStart, verifyFacebookToken } = require('./middleware');
@@ -47,6 +48,7 @@ apiRouter.get('/health', (req, res) => {
 apiRouter.use('/auth', loginRoutes);
 
 apiRouter.use('/pages', verifyFacebookToken, isAuthenticated, pageRoutes);
+apiRouter.use('/instagram', verifyFacebookToken, isAuthenticated, instagramRoutes);
 
 app.use('/api', apiRouter);
 

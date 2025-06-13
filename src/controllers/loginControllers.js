@@ -5,12 +5,42 @@ const authStore = require('../services/auth');
 
 
 const disconnectFacebook = async (req, res) => {
-    authStore.updateAuthStatus('disconnected', false, 'Disconnected from Facebook', null, null, null);
-    res.status(200).json({
-        status: 'success',
-        message: 'Disconnected from Facebook'
-    });
-}
+    try {
+        authStore.updateAuthStatus('disconnected', false, 'Disconnected from Facebook', null, null, null);
+        
+        console.log('Disconnecting user - Session before logout:', req.session);
+        
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Error destroying session:', err);
+                return res.status(500).json({
+                    status: 'error',
+                    message: 'Error during logout'
+                });
+            }
+            
+            res.clearCookie('connect.sid', {
+                path: '/',
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: false 
+            });
+            
+            console.log('User logged out successfully, session destroyed');
+            
+            res.status(200).json({
+                status: 'success',
+                message: 'Disconnected from Facebook'
+            });
+        });
+    } catch (error) {
+        console.error('Error in disconnectFacebook:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Internal server error during logout'
+        });
+    }
+};
 
 const facebookAuthCallback = async (req, res) => {
     console.log('Facebook auth callback called');
@@ -54,6 +84,8 @@ const facebookAuthCallback = async (req, res) => {
             tokenExpiresAt: expirationTimestamp.toISOString(),
             accessToken: data.accessToken,
         }
+
+        console.log('facebook access token:', data.accessToken);
 
         req.session.save((err) => {
             if (err) {
@@ -111,6 +143,42 @@ const getFacebookAuthStatus = (req, res) => {
     }
 }
 
+const threadsLogin = async (req, res) => {
+    const url = `https://threads.net/oauth/authorize?client_id=${process.env.REACT_APP_THREADS_APP_ID}&client_secret=${process.env.REACT_APP_THREADS_APP_SECRET}&redirect_uri=${process.env.REACT_APP_THREADS_REDIRECT_URI}&scope=${process.env.REACT_APP_THREADS_SCOPE}&response_type=code`; 
+    try {
+        res.status(200).json({
+            status: 'success',
+            message: 'Redirecting to Threads login',
+            data: {
+                url: url
+            }
+        });
+    } catch (error) {
+        console.error('Error in threadsLogin:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Internal server error'
+        });
+    }
+}
+
+const threadsAuthCallback = async (req, res) => {
+    console.log('Threads auth callback called');
+    try {
+        return res.status(200).json({
+            status: 'success',
+            message: 'Threads authentication successful!',
+            data: req.body
+        });
+    } catch (error) {
+        console.error('Error in Threads auth callback:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Internal server error'
+        });
+    }
+}
+
 
     
 
@@ -118,5 +186,7 @@ const getFacebookAuthStatus = (req, res) => {
 module.exports = {
     facebookAuthCallback,
     disconnectFacebook,
-    getFacebookAuthStatus
+    getFacebookAuthStatus,
+    threadsAuthCallback,
+    threadsLogin
 };
