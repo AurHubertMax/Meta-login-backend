@@ -144,7 +144,15 @@ const getFacebookAuthStatus = (req, res) => {
 }
 
 const threadsLogin = async (req, res) => {
-    const url = `https://threads.net/oauth/authorize?client_id=${process.env.REACT_APP_THREADS_APP_ID}&client_secret=${process.env.REACT_APP_THREADS_APP_SECRET}&redirect_uri=${process.env.REACT_APP_THREADS_REDIRECT_URI}&scope=${process.env.REACT_APP_THREADS_SCOPE}&response_type=code`; 
+    /*
+    https://www.threads.net/oauth/authorize?
+  client_id=1030521445884791
+  &redirect_uri=https://d41d-52-119-103-2.ngrok-free.app/api/auth/threads/callback
+  &scope=threads_basic,threads_content_publish
+  &response_type=code
+
+    */
+    const url = `https://threads.net/oauth/authorize?client_id=${process.env.REACT_APP_THREADS_ID}&redirect_uri=${process.env.REACT_APP_THREADS_REDIRECT_URI}&scope=${process.env.REACT_APP_THREADS_SCOPE}&response_type=code`; 
     try {
         res.status(200).json({
             status: 'success',
@@ -162,14 +170,78 @@ const threadsLogin = async (req, res) => {
     }
 }
 
+const getThreadsAccessTokenHelper = async (code) => {
+    try {
+        const formData = new URLSearchParams();
+        formData.append('client_id', process.env.REACT_APP_THREADS_ID);
+        formData.append('client_secret', process.env.REACT_APP_THREADS_SECRET);
+        formData.append('redirect_uri', process.env.REACT_APP_THREADS_REDIRECT_URI);
+        formData.append('code', code);
+        formData.append('grant_type', 'authorization_code');
+        const response = await axios.post('https://graph.threads.net/oauth/access_token', formData, {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
+
+        if (response.status === 200) {
+            return {
+                status: 'success',
+                data: response.data
+            };
+        } else {
+            return {
+                status: 'error',
+                message: 'Failed to retrieve access token from Threads'
+            };
+        }
+    } catch (error) {
+        console.error('Error retrieving Threads access token:', error);
+        return {
+            status: 'error',
+            message: 'Internal server error while retrieving Threads access token'
+        };
+    }
+}
+
 const threadsAuthCallback = async (req, res) => {
     console.log('Threads auth callback called');
     try {
-        return res.status(200).json({
-            status: 'success',
-            message: 'Threads authentication successful!',
-            data: req.body
-        });
+        const { code } = req.query;
+        if (!code) {
+            console.error('No authorization code received from Threads');
+            return res.status(400).json({
+                status: 'error',
+                message: 'No authorization code received'
+            });
+        }
+        console.log('Received Threads authorization code:', code);
+
+        const tokenResponse = await getThreadsAccessTokenHelper(code);
+        if (tokenResponse.status === 'error') {
+            console.error('Error retrieving Threads access token:', tokenResponse.message);
+            return res.status(500).json({
+                status: 'error',
+                message: tokenResponse.message
+            });
+        }
+
+        console.log('Threads access token response:', tokenResponse.data);
+
+        res.status(200).send(`
+        <html>
+            <head><title>Threads Authentication Successful</title></head>
+            <body>
+            <h3>Threads Authentication Successful! You can close this window.</h3>
+            <script>
+                if (window.opener) {
+                window.opener.postMessage({ status: 'success', provider: 'threads', userId: '${tokenResponse.data.user_id}', accessToken: '${tokenResponse.data.access_token}' }, '*');
+                window.close();
+                }
+            </script>
+            </body>
+        </html>
+        `);
     } catch (error) {
         console.error('Error in Threads auth callback:', error);
         res.status(500).json({

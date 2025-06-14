@@ -5,6 +5,7 @@ const app = express();
 const loginRoutes = require('./routes/loginRoutes');
 const pageRoutes = require('./routes/pageRoutes');
 const instagramRoutes = require('./routes/instagramRoutes');
+const threadsRoutes = require('./routes/threadsRoutes');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const { responseLogger, isAuthenticated, cookieLogger, loggerStart, verifyFacebookToken } = require('./middleware');
@@ -49,6 +50,7 @@ apiRouter.use('/auth', loginRoutes);
 
 apiRouter.use('/pages', verifyFacebookToken, isAuthenticated, pageRoutes);
 apiRouter.use('/instagram', verifyFacebookToken, isAuthenticated, instagramRoutes);
+apiRouter.use('/threads', verifyFacebookToken, isAuthenticated, threadsRoutes);
 
 app.use('/api', apiRouter);
 
