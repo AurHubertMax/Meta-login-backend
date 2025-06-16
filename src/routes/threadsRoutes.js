@@ -9,4 +9,7 @@ router.post('/updateSession', threadsController.updateSessionWithThreadsData);
 
 router.get('/', threadsController.getThreadsAccount);
 
+router.post('/post', threadsController.postToThreads);
+
+
 module.exports = router;
